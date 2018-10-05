@@ -16,6 +16,9 @@ SVF = output_files/$(TARGET).svf
 all:
 	@echo "Type: make (compile|program|svf|clean)"
 
+check: $(SRCS)
+	iverilog -Wall -s top $(SRCS)
+
 compile: $(POF)
 
 # compile the design, using the setup in init.tcl
@@ -31,9 +34,10 @@ program: $(SOF)
 svf: $(SVF)
 
 clean:
-	$(RM) *.qpf *.qsf *.rpt
-	$(RM) *.bak *.old *~
 	$(RM) -r output_files
+	$(RM) *.qpf *.qsf *.rpt
+	$(RM) a.out
+	$(RM) *.bak *.old *~
 
 cleaner: clean
 	$(RM) -r db incremental_db
