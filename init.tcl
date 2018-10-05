@@ -38,8 +38,8 @@ set_location_assignment PIN_10 -to cpu[0]
 
 set_location_assignment PIN_11 -to pmod[3]
 set_location_assignment PIN_12 -to pmod[2]
-set_location_assignment PIN_13 -to pmod[1]
-set_location_assignment PIN_14 -to pmod[0]
+set_location_assignment PIN_13 -to uart_tx
+set_location_assignment PIN_14 -to uart_rx
 
 set_location_assignment PIN_17 -to cpu[1]
 
@@ -157,6 +157,9 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to dip
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to led
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to pmod
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to cpu
+
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to uart_rx
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to uart_tx
 
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to ua
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to ud
