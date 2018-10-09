@@ -17,9 +17,9 @@ all:
 	@echo "Type: make (compile|program|svf|clean)"
 
 check: $(SRCS)
-	iverilog -Wall -s top $(SRCS)
+	iverilog -g2005-sv -Wall -s top $(SRCS)
 
-compile: $(POF)
+compile: check $(POF)
 
 # compile the design, using the setup in init.tcl
 $(POF) $(SOF): $(SRCS) init.tcl
