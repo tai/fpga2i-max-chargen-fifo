@@ -9,233 +9,105 @@
 // - LED also blinks just to show the board is alive
 //
 
+`timescale 1ns/1ps
+
+// TRUE/FALSE in negative/positive logic
+`define nT '0
+`define nF '1
+`define pT '1
+`define pF '0
+
 `define CYCLE_1s  50_000_000 // 50MHz
-`define CYCLE_1ms (CYCLE_1s / 1000)
-
-`define BAUDRATE 115200
-`define CYCLE_uart 434 // = (`CYCLE_1s / `BAUDRATE)
-
-module fifo
-  #(
-    parameter DEPTH = 16,
-    parameter WIDTH = 8
-    )
-   (
-    input wire 		    res_n,
-    input wire 		    clk,
-    input wire [WIDTH-1:0]  port_in,
-    output wire [WIDTH-1:0] port_out,
-    input wire 		    wen_n,
-    input wire 		    ren_n,
-    output wire 	    is_empty,
-    output wire 	    is_full
-    );
-
-   reg [WIDTH-1:0] 	    buff[DEPTH-1:0], data_out;
-   reg [WIDTH-1:0] 	    rp, wp; // big enough to count DEPTH
-
-   assign port_out = data_out;
-
-   assign is_empty = (rp == wp) ? '1 : '0;
-   assign is_full = ((wp - rp) == (DEPTH - 1)) ? '1 :
-		    ((rp - wp) == 1) ? '1 : '0;
-
-   always @(posedge clk, negedge res_n) begin
-      if (~res_n) begin
-	 rp <= '0;
-	 wp <= '0;
-      end else begin
-	 // handle read from FIFO
-	 if (~ren_n) begin
-	    if (~is_empty) begin
-	       data_out <= buff[rp];
-	       rp <= (rp + 1) % DEPTH;
-	    end
-	 end
-
-	 // handle write to FIFO
-	 if (~wen_n) begin
-	    if (~is_full) begin
-	       buff[wp] <= port_in;
-	       wp <= (wp + 1) % DEPTH;
-	    end
-	 end
-      end
-   end
-endmodule
-
-module chargen
-  (
-   input wire 	     clk,
-   input wire 	     res_n,
-   output wire [7:0] port,
-   input wire 	     cs_n,
-   output wire 	     wen_n
-   );
-
-   reg [7:0] 	     outchar;
-   reg 		     wen_n_int;
-   
-   always @(posedge clk, negedge res_n) begin
-      if (~res_n) begin
-	 wen_n_int <= '1;
-	 outchar <= "a";
-      end else begin
-	 if (~cs_n) begin
-	    if (~wen_n_int) begin
-	       wen_n_int <= '0;
-	       outchar <= outchar + 1;
-
-	       if (outchar == "z") begin
-		  outchar <= "a";
-	       end
-	    end else begin
-	       wen_n_int <= '1;
-	    end
-	 end else begin
-	    wen_n_int <= '1;
-	 end
-      end
-   end
-
-   assign wen_n = wen_n_int;
-   assign port = outchar;
-endmodule
-
-//
-// sender module
-//
-// Notes on UART protocol:
-// - Default signal level is HIGH
-// - Bit order: [START:L] [7]...[0] [STOP:H]
-//
-module sender
-  (
-   input wire 	    clk,
-   input wire 	    res_n,
-   input wire [7:0] port,
-   input wire 	    cs_n,
-   output wire 	    ren_n,
-   output wire 	    uart_tx
-   );
-
-   reg [32:0] 	     counter;
-   reg [8:0] 	     outchar;
-   reg 		     tx;
-   reg [8:0] 	     outchar_index;
-
-   initial begin
-      tx = 1;
-      counter = 0;
-      outchar = "a";
-      outchar_index = 0;
-   end
-
-   always @(posedge clk, negedge res_n) begin
-      if (~res_n) begin
-	 tx <= 1;
-	 counter <= 0;
-	 outchar <= "a";
-	 outchar_index <= 0;
-      end
-      else if (~cs_n) begin
-	 counter <= counter + 1;
-
-	 if (counter == `CYCLE_uart) begin
-	    counter <= 0;
-
-	    outchar_index <= outchar_index + 1;
-	    case (outchar_index)
-	      0: tx <= 0;
-	      9: begin
-		 tx <= 1;
-		 outchar_index <= 0;
-
-		 if (outchar >= "z") begin
-		    outchar <= "a";
-		 end
-		 else begin
-		    outchar <= outchar + 1;
-		 end
-	      end
-	      default: tx <= outchar[outchar_index - 1];
-	    endcase
-	 end
-      end
-   end
-
-   assign uart_tx = tx;
-endmodule
-
-//
-// LED blinker
-//
-module blink
-  (
-   input wire 	     clk,
-   input wire 	     res_n,
-   output wire [2:0] led
-   );
-
-   reg [32:0] 	     counter;
-   reg [2:0] 	     led_output;
-
-   initial begin
-      counter = 0;
-      led_output <= ~0;
-   end
-
-   always @(posedge clk, negedge res_n) begin
-      // reset
-      if (~res_n) begin
-	 counter <= 0;
-	 led_output <= ~0;
-      end
-
-      // clocked operation
-      else begin
-	 counter <= counter + 1;
-
-	 // flip led output every cycle
-	 if (counter == `CYCLE_1s) begin
-	    counter <= 0;
-	    led_output <= ~led_output;
-	 end
-      end
-   end
-
-   // drive LED
-   assign led = led_output;
-endmodule
 
 module top
-  (
-   input wire 	     clk,
-   input wire 	     res_n,
-   input wire [2:0]  dip,
-   output wire [2:0] led,
-   input wire 	     uart_rx,
-   output wire 	     uart_tx
-   );
+  #(
+    parameter FIFO_DEPTH=16,
+    parameter UART_CDIV=434,
+    parameter BLINK_INTERVAL=`CYCLE_1s
+    )
+   (
+    input wire 	      clk,
+    input wire 	      n_rst,
+    input wire [2:0]  dip,
+    output wire [2:0] led,
+    input wire 	      uart_rx,
+    output wire       uart_tx
+    );
 
-   wire [7:0] 	     fifo_in, fifo_out;
-   wire 	     wen_n, ren_n, is_empty, is_full;
+   wire [7:0] 	      fifo_in, fifo_out;
+   wire 	      n_wr, n_rd, n_empty, n_full;
 
-   fifo #(.DEPTH(16))
-   fifo_00(.clk, .res_n,
+   fifo #(.DEPTH(FIFO_DEPTH))
+   fifo_00(.clk, .n_rst,
 	   .port_in(fifo_in), .port_out(fifo_out),
-	   .wen_n(wen_n), .ren_n(ren_n),
-	   .is_empty(is_empty), .is_full(is_full));
+	   .n_wr(n_wr), .n_rd(n_rd), .n_empty(n_empty), .n_full(n_full));
 
-   chargen
-   chargen_00(.clk, .res_n,
-	      .port(fifo_in), .cs_n(~is_full), .wen_n(wen_n));
+   chargen #(.LASTCHAR("z"))
+   chargen_00(.clk, .n_rst,
+	      .port(fifo_in), .n_cs(~n_full), .n_wr(n_wr));
    
-   sender
-   sender_00(.clk, .res_n,
-	     .port(fifo_in), .cs_n(~is_empty), .ren_n(ren_n),
-	     .uart_tx(uart_tx));
+   uartout #(.CDIV(UART_CDIV))
+   uartout_00(.clk, .n_rst,
+	      .data(fifo_in), .n_cs(~n_empty), .n_rd(n_rd),
+	      .tx(uart_tx));
 
-   blink
-   blink_00(.clk, .res_n, .led(led));
+   blink #(.CDIV(BLINK_INTERVAL))
+   blink_00(.clk, .n_rst, .led(led));
+endmodule
+
+module top_tb;
+   reg	      clk, n_rst;
+   reg [2:0]  dip;
+   reg [2:0]  led;
+   reg 	      uart_rx, uart_tx;
+   
+   top #(.FIFO_DEPTH(4), .UART_CDIV(4), .BLINK_INTERVAL(4))
+   top_00(.*);
+
+   // timing(s)
+   parameter T0 = 5;   // small offset to avoid racing with clock edge
+   parameter TH = 50;  // width of half cycle
+   parameter TF = 100; // width of full cycle
+
+   // logging
+   initial begin
+`define HEADER(s) \
+      $display(s); \
+      $display("# time nRST LED TX")
+      $monitor("%6t %4b %3b %3b", $time, n_rst, led, uart_tx);
+      $timeformat(-9, 0, "", 6);
+
+      $dumpfile("top.vcd");
+      $dumpvars(2, top_00);
+      $dumplimit(1_000_000); // stop dump at 1MB
+      $dumpon;
+      
+      //`HEADER("# start");
+      //forever #(TF*10) `HEADER("#");
+   end
+
+   // clock
+   initial begin
+      #T0 clk = 0;
+      forever #TH clk = ~clk;
+   end
+
+   task test_reset;
+      `HEADER("### test_reset ###");
+      n_rst = `nF; #TF;
+      n_rst = `nT; #TF;
+      n_rst = `nF; #TF;
+   endtask
+
+   task test_run;
+      `HEADER("### test_run ###");
+      #(TF * 1024);
+   endtask
+
+   // run test
+   initial begin
+      test_reset;
+      test_run;
+      $finish;
+   end
 endmodule
