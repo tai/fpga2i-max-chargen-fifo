@@ -1,4 +1,4 @@
-project_new -overwrite -revision top top
+project_new -overwrite -revision sample sample
 
 set_global_assignment -name TOP_LEVEL_ENTITY top
 
@@ -13,6 +13,8 @@ set_global_assignment -name FAMILY MAX10
 set_global_assignment -name DEVICE 10M16SCE144C8G
 
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 4
 
 if {false} {
 set_global_assignment -name BDF_FILE sample.bdf
@@ -138,7 +140,8 @@ set_location_assignment PIN_118 -to ud[5]
 set_location_assignment PIN_119 -to ud[6]
 set_location_assignment PIN_120 -to ud[7]
 
-set_location_assignment PIN_121 -to res_n
+#set_location_assignment PIN_121 -to res_n
+set_location_assignment PIN_121 -to n_rst
 
 set_location_assignment PIN_122 -to u7addr[0]
 
