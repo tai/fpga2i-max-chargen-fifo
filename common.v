@@ -4,6 +4,9 @@
 `ifndef COMMON_V
 `define COMMON_V
 
+// clock speed (default: 50MHz)
+`define CYCLE_1s  50_000_000
+
 // TRUE/FALSE in negative/positive logic
 `define nT '0
 `define nF '1
@@ -13,14 +16,6 @@
 // Example: `LOG(("value=%2d", value));
 `define LOG(s) $write("%6t ", $time); $display s
 
-//
-//
-typedef logic [0:0] b1_t;
-typedef logic [3:0] b4_t;
-typedef logic [7:0] b8_t;
-typedef logic [15:0] b16_t;
-typedef logic [31:0] b32_t;
-  
 //
 // assertion support
 //

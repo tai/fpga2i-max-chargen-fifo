@@ -13,8 +13,6 @@
 
 `include "common.v"
 
-`define CYCLE_1s  50_000_000 // 50MHz
-
 module top
   #(
     parameter FIFO_DEPTH=16,
