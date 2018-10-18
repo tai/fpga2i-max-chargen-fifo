@@ -1,9 +1,12 @@
-# top-level target
-TARGET = top
-
 # vendor tool path
 PATH := /opt/altera/18.0/quartus/bin:$(PATH)
 export PATH
+
+# project and top-level entity name
+PROJECT = sample
+TARGET = top
+
+# top-level entity name
 
 # verilog code compiler
 VCC = iverilog -g2005-sv -Wall
@@ -16,9 +19,9 @@ SRCS_SY = $(filter-out $(SRCS_TB),$(SRCS))
 TB = $(SRCS_TB:.v=)
 SY = $(SRCS_SY:.v=)
 
-POF = output_files/$(TARGET).pof
-SOF = output_files/$(TARGET).sof
-SVF = output_files/$(TARGET).svf
+POF = output_files/$(PROJECT).pof
+SOF = output_files/$(PROJECT).sof
+SVF = output_files/$(PROJECT).svf
 
 .SUFFIXES:
 .SUFFIXES: .pof .svf
@@ -35,18 +38,17 @@ check: $(TARGET)
 compile: check $(POF)
 
 test: $(TB)
-	for i in $(TB); do ./$$i | \
-	awk 'BEGIN{rc=0} {print} /^NG:/{rc=1} END{exit(rc)}'; \
-	done
+	for i in $(TB); do ./$$i; done | \
+	awk 'BEGIN{rc=0} {print} /^NG:/{rc=1} END{exit(rc)}'
 
 # compile the design, using the setup in init.tcl
-$(POF) $(SOF): $(SRCS) init.tcl
+$(POF) $(SOF): $(SRCS_SY) init.tcl
 	quartus_sh -t init.tcl
-	quartus_sh --flow compile $(TARGET)
+	quartus_sh --flow compile $(PROJECT)
 
 # program SOF over JTAG to 1st device in the chain, using the 1st cable
 program: $(SOF)
-#	quartus_pgm -z -c 1 -m JTAG $(TARGET).cdf
+#	quartus_pgm -z -c 1 -m JTAG $(PROJECT).cdf
 	quartus_pgm -z -c 1 -m JTAG -o "p;$(SOF)@1"
 
 svf: $(SVF)
@@ -56,7 +58,7 @@ clean:
 	$(RM) -r output_files
 	$(RM) *.qpf *.qsf *.qws *.rpt *.summary
 # clean up iverilog-generated files
-	$(RM) *.vcd $(TB) $(SY)
+	$(RM) *.vcd $(TARGET) $(TB)
 # clean up other files
 	$(RM) *.bak *.old *~
 
