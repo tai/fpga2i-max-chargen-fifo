@@ -26,7 +26,7 @@ module top_tb;
       $monitor("%6t %4b %3b %3b", $time, n_rst, led, uart_tx);
       $timeformat(-9, 0, "", 6);
 
-      $dumpfile("top.vcd");
+      $dumpfile("top_tb.vcd");
       $dumpvars(2, top_00);
       $dumplimit(1_000_000); // stop dump at 1MB
       $dumpon;
@@ -55,8 +55,8 @@ module top_tb;
 
    // run test
    initial begin
-      test_reset;
-      test_run;
-      $finish;
+      test_reset();
+      test_run();
+      `test_pass();
    end
 endmodule

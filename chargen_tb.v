@@ -27,6 +27,11 @@ module chargen_tb;
 	       $time, n_rst, n_cs, n_cs, port);
       $timeformat(-9, 0, "", 6);
 
+      $dumpfile("chargen_tb.vcd");
+      $dumpvars(1, chargen_00);
+      $dumplimit(1_000_000); // stop dump at 1MB
+      $dumpon;
+      
       //`HEADER("# start");
       //forever #(TF*10) `HEADER("#");
    end
@@ -39,25 +44,24 @@ module chargen_tb;
 
    task test_reset;
       `HEADER("### test_reset ###");
-      n_rst = `nF; #TF;
-      n_rst = `nT; #TF;
-      n_rst = `nF; #TF;
+      #TF n_rst = `nF;
+      #TF n_rst = `nT;
+      #TF n_rst = `nF;
 
       `test_eq("Output should be initialized to [a]", port, `INITCHAR);
    endtask
 
    task test_output;
       `HEADER("### test_output ###");
-      repeat(5) begin
-	 n_cs = `nT; #TF;
+      repeat(6) begin
+	 #TF n_cs = `nT;
       end
-      `test_eq("Output should be now [c]", port, `LASTCHAR);
+      `test_eq("Output should now be [c]", port, `LASTCHAR);
    endtask
 
    initial begin
-      test_reset;
-      test_output;
+      test_reset();
+      test_output();
       `test_pass();
-      $finish;
    end
 endmodule

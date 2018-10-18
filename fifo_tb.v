@@ -25,6 +25,11 @@ module fifo_tb;
 	       n_empty, n_full, port_in, port_out, fifo_00.rp, fifo_00.wp);
       $timeformat(-9, 0, "", 6);
 
+      $dumpfile("fifo_tb.vcd");
+      $dumpvars(1, fifo_00);
+      $dumplimit(1_000_000); // stop dump at 1MB
+      $dumpon;
+      
       //`HEADER("# start");
       //forever #(TF*10) `HEADER("#");
    end
@@ -37,37 +42,39 @@ module fifo_tb;
 
    task test_reset;
       `HEADER("### test_reset ###");
-      n_rst = `nF; #TF;
-      n_rst = `nT; #TF;
-      n_rst = `nF; #TF;
+      #TF n_rst = `nF;
+      #TF n_rst = `nT;
+      #TF n_rst = `nF;
+
+      `test_ok("Should be empty", n_empty === `nT);
+      `test_ok("Should not be full", n_full === `nF);
    endtask
 
    task test_write;
       `HEADER("### test_write ###");
       n_wr = `nF;
       port_in = "a";
-      #TF;
       repeat(5) begin
-	 n_wr = `nT; #TF;
-	 n_wr = `nF; #TF;
-	 port_in = port_in + 1;
+	 #TF n_wr = `nT;
+	 #TF n_wr = `nF;
+	 #TF port_in = port_in + 1;
       end
    endtask
 
    task test_read;
       `HEADER("### test_read ###");
-      n_rd = `nF; #TF;
+      #TF n_rd = `nF;
       repeat(5) begin
-	 n_rd = `nT; #TF;
-	 n_rd = `nF; #TF;
+	 #TF n_rd = `nT;
+	 #TF n_rd = `nF;
       end
    endtask
       
    // run test
    initial begin
-      test_reset;
-      test_write;
-      test_read;
-      $finish;
+      test_reset();
+      test_write();
+      test_read();
+      `test_pass();
    end
 endmodule

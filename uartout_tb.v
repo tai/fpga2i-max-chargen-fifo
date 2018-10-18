@@ -25,7 +25,7 @@ module uartout_tb;
 	       $time, n_rst, n_cs, n_rd, data, tx, uartout_00.tx_index);
       $timeformat(-9, 0, "", 6);
 
-      $dumpfile("uartout.vcd");
+      $dumpfile("uartout_tb.vcd");
       $dumpvars(1, uartout_00);
       $dumplimit(1_000_000); // stop dump at 1MB
       $dumpon;
@@ -42,9 +42,9 @@ module uartout_tb;
 
    task test_reset;
       `HEADER("### test_reset ###");
-      n_rst = `nF; #TF;
-      n_rst = `nT; #TF;
-      n_rst = `nF; #TF;
+      #TF n_rst = `nF;
+      #TF n_rst = `nT;
+      #TF n_rst = `nF;
    endtask
 
    task test_write;
@@ -63,8 +63,8 @@ module uartout_tb;
 
    // run test
    initial begin
-      test_reset;
-      test_write;
-      $finish;
+      test_reset();
+      test_write();
+      `test_pass();
    end
 endmodule

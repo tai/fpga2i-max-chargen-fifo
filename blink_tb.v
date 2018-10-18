@@ -13,17 +13,17 @@ module blink_tb;
    reg	      clk, n_rst;
    reg [2:0]  led;
 
-   blink #(.CDIV(1)) blink_00(.*);
+   blink #(.CDIV(2)) blink_00(.*);
 
    // logging
    initial begin
 `define HEADER(s) \
       $display(s); \
-      $display("# time nRST LED")
-      $monitor("%6t %4b %3b", $time, n_rst, led);
+      $display("# time nRST LED COUNTER")
+      $monitor("%6t %4b %3b %7d", $time, n_rst, led, blink_00.counter);
       $timeformat(-9, 0, "", 6);
 
-      $dumpfile("blink.vcd");
+      $dumpfile("blink_tb.vcd");
       $dumpvars(1, blink_00);
       $dumplimit(1_000_000); // stop dump at 1MB
       $dumpon;
@@ -40,9 +40,12 @@ module blink_tb;
 
    task test_reset;
       `HEADER("### test_reset ###");
-      n_rst = `nF; #TF;
-      n_rst = `nT; #TF;
-      n_rst = `nF; #TF;
+      #TF n_rst = `nF;
+      #TF n_rst = `nT;
+      #TF n_rst = `nF;
+
+      `test_ok("Counter should reset to 0", blink_00.counter === 0);
+      `test_ok("LED should be off (HI)", blink_00.led === '1);
    endtask
    
    task test_blink;
@@ -52,8 +55,8 @@ module blink_tb;
 
    // run test
    initial begin
-      test_reset;
-      test_blink;
-      $finish;
+      test_reset();
+      test_blink();
+      `test_pass();
    end
 endmodule
