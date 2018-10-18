@@ -19,6 +19,8 @@ module chargen
    reg [7:0] 	      port_int;
    reg 		      n_wr_int;
 
+   typedef reg [7:0]  portsize_t;
+
    assign n_wr = n_wr_int;
    assign port = port_int;
    
@@ -29,7 +31,7 @@ module chargen
       end
       else if (~n_cs) begin
 	 n_wr_int <= `nT;
-	 port_int <= port_int + 1;
+	 port_int <= portsize_t'(port_int + 1);
 
 	 if (port_int == LASTCHAR) begin
 	    port_int <= "a";

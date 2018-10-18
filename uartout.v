@@ -30,6 +30,8 @@ module uartout
    reg [3:0] 	     tx_index;
    reg 		     n_rd_out;
 
+   typedef reg [3:0] txlen_t;
+
    assign n_rd = n_rd_out;
    assign tx = tx_out;
 
@@ -60,7 +62,7 @@ module uartout
 	       counter <= 0;
 	    end
 	    else if (counter == 0) begin
-	       tx_index <= tx_index + 1;
+	       tx_index <= txlen_t'(tx_index + 1);
 
 	       case (tx_index)
 		 8: begin
