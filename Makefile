@@ -54,7 +54,7 @@ svf: $(SVF)
 clean:
 # clean up quartus-generated files
 	$(RM) -r output_files
-	$(RM) *.qpf *.qsf *.rpt *.summary
+	$(RM) *.qpf *.qsf *.qws *.rpt *.summary
 # clean up iverilog-generated files
 	$(RM) *.vcd $(TB) $(SY)
 # clean up other files
