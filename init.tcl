@@ -1,7 +1,13 @@
-project_new -overwrite -revision sample sample
+project_new -overwrite -revision top top
 
 set_global_assignment -name TOP_LEVEL_ENTITY top
-set_global_assignment -name VERILOG_FILE top.v
+
+# register all code except testbench
+foreach {file} [glob "*.v"] {
+    if {[regexp {.*_tb.v} $file] == 0} {
+	set_global_assignment -name VERILOG_FILE $file
+    }
+}
 
 set_global_assignment -name FAMILY MAX10
 set_global_assignment -name DEVICE 10M16SCE144C8G
