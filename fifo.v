@@ -23,6 +23,8 @@ module fifo
    reg [WIDTH-1:0] 	    buff[DEPTH-1:0], data_out;
    reg [WIDTH-1:0] 	    rp, wp; // big enough to count DEPTH
 
+   typedef reg [WIDTH-1:0]  bp_t; // buffer pointer type
+
    assign port_out = data_out;
 
    assign n_empty = (rp == wp) ? `nT : `nF;
@@ -40,7 +42,7 @@ module fifo
 	 if (~n_rd) begin
 	    if (n_empty) begin
 	       data_out <= buff[rp];
-	       rp <= (rp + 1) & (DEPTH - 1);
+	       rp <= bp_t'((rp + 1) & (DEPTH - 1));
 	    end
 	 end
 
@@ -48,7 +50,7 @@ module fifo
 	 if (~n_wr) begin
 	    if (n_full) begin
 	       buff[wp] <= port_in;
-	       wp <= (wp + 1) & (DEPTH - 1);
+	       wp <= bp_t'((wp + 1) & (DEPTH - 1));
 	    end
 	 end
       end
