@@ -5,66 +5,91 @@
 `include "common.v"
 
 module uartout_tb;
-   // timing(s)
-   parameter T0 = 5;   // small offset to avoid racing with clock edge
-   parameter TH = 50;  // width of half cycle
-   parameter TF = 100; // width of full cycle
+   `test_init(clk);
 
-   reg clk, n_rst, n_cs, n_rd;
+   parameter CDIV = 2;
+
+   reg clk, n_rst, n_valid, n_ready, tx;
    reg [7:0] data;
-   reg 	     tx;
    
-   uartout #(.CDIV(8)) uartout_00(.*);
+   uartout #(.CDIV(CDIV)) uartout_00(.*);
 
-   // logging
-   initial begin
+   initial begin : logging
 `define HEADER(s) \
       $display(s); \
-      $display("# time nRST nCS nRD IN TX TXI")
-      $monitor("%6t %4b %3b %3b %2c %2b %3d",
-	       $time, n_rst, n_cs, n_rd, data, tx, uartout_00.tx_index);
+      $display("# time x nRST nVLD nRDY IN TX IDX")
+      $monitor("%6t %1b %4b %4b %4b %2c %2b %3d",
+	       $time, `TICK_X, n_rst, n_valid, n_ready, data, tx,
+	       uartout_00.tx_index);
       $timeformat(-9, 0, "", 6);
 
       $dumpfile("uartout_tb.vcd");
       $dumpvars(1, uartout_00);
       $dumplimit(1_000_000); // stop dump at 1MB
-      $dumpon;
-
-      //`HEADER("# start");
-      //forever #(TF*10) `HEADER("#");
    end
 
-   // clock
-   initial begin
-      #T0 clk = 0;
-      forever #TH clk = ~clk;
-   end
+   //////////////////////////////////////////////////////////////////////
 
-   task test_reset;
-      `HEADER("### test_reset ###");
-      #TF n_rst = `nF;
-      #TF n_rst = `nT;
-      #TF n_rst = `nF;
-   endtask
-
-   task test_write;
-      `HEADER("### test_write: S ###");
-      data = 8'b01010011;
-      n_cs = `nT; #TF;
-      n_cs = `nF;
-      while (n_rd) #TF;
-
-      `HEADER("### test_write: t ###");
-      data = 8'b01110100;
-      n_cs = `nT; #TF;
-      n_cs = `nF;
-      while (n_rd) #TF;
-   endtask
-
-   // run test
-   initial begin
+   initial begin : test_main
       test_reset();
       test_write();
       `test_pass();
    end
+
+   task test_reset;
+      `HEADER("### test_reset ###");
+      `TICK(1);
+      n_rst = `nT;
+      `TICK(0);
+      `test_ok("Data should be cleared", uartout_00.n_empty === `nT);
+      `test_ok("TX should be high", tx === 1);
+      n_rst = `nF;
+   endtask
+
+   task test_write;
+      `HEADER("### test_write: nVLD=nF ###");
+      n_valid = `nF;
+      `TICK(1);
+      `test_ok("Data should still be empty", uartout_00.n_empty === `nT);
+      `test_eq("TX should still be high", tx, 1);
+
+      `HEADER("### test_write: S (0x53) ###");
+      data = 8'h53;
+      n_valid = `nT;
+      `TICK(1);
+      `test_ok("Data should be valid", uartout_00.n_empty === `nF);
+      n_valid = `nF;
+      
+      `test_eq("TX START should be 0", tx, 0); `TICK(CDIV);
+      `test_eq("TX bit 7 should be 0", tx, 0); `TICK(CDIV);
+      `test_eq("TX bit 6 should be 1", tx, 1); `TICK(CDIV);
+      `test_eq("TX bit 5 should be 0", tx, 0); `TICK(CDIV);
+      `test_eq("TX bit 4 should be 1", tx, 1); `TICK(CDIV);
+      `test_eq("TX bit 3 should be 0", tx, 0); `TICK(CDIV);
+      `test_eq("TX bit 2 should be 0", tx, 0); `TICK(CDIV);
+      `test_eq("TX bit 1 should be 1", tx, 1); `TICK(CDIV);
+      `test_eq("TX bit 0 should be 1", tx, 1); `TICK(CDIV);
+      `test_eq("TX STOP  should be 1", tx, 1);
+
+      // NOTE: Should be ready right after bit 0 (before STOP bit)
+      wait (n_ready === `nT);
+
+      `HEADER("### test_write: t (0x74) ###");
+      data = 8'h74;
+      n_valid = `nT;
+      `TICK(1);
+      `test_ok("Data should be valid", uartout_00.n_empty === `nF);
+      n_valid = `nF;
+      
+      `test_eq("TX START should be 0", tx, 0); `TICK(CDIV);
+      `test_eq("TX bit 7 should be 0", tx, 0); `TICK(CDIV);
+      `test_eq("TX bit 6 should be 1", tx, 1); `TICK(CDIV);
+      `test_eq("TX bit 5 should be 1", tx, 1); `TICK(CDIV);
+      `test_eq("TX bit 4 should be 1", tx, 1); `TICK(CDIV);
+      `test_eq("TX bit 3 should be 0", tx, 0); `TICK(CDIV);
+      `test_eq("TX bit 2 should be 1", tx, 1); `TICK(CDIV);
+      `test_eq("TX bit 1 should be 0", tx, 0); `TICK(CDIV);
+      `test_eq("TX bit 0 should be 0", tx, 0); `TICK(CDIV);
+      `test_eq("TX STOP  should be 1", tx, 1);
+   endtask
 endmodule

@@ -22,38 +22,56 @@ module fifo
 
    reg [WIDTH-1:0] 	    buff[DEPTH-1:0], data_out;
    reg [WIDTH-1:0] 	    rp, wp; // big enough to count DEPTH
+   reg [WIDTH-1:0] 	    nr;
 
    typedef reg [WIDTH-1:0]  bp_t; // buffer pointer type
 
    assign port_out = data_out;
 
-   assign n_empty = (rp == wp) ? `nT : `nF;
-   assign n_full = ((wp - rp) == (DEPTH - 1)) ? `nT :
-		   ((rp - wp) == 1) ? `nT : `nF;
+   assign n_empty = (nr ==     0) ? `nT : `nF;
+   assign n_full  = (nr == DEPTH) ? `nT : `nF;
 
    always @(posedge clk, negedge n_rst) begin
       // handle reset
       if (~n_rst) begin
 	 rp <= 0;
 	 wp <= 0;
+	 nr <= 0;
       end
       else begin
-	 // handle read from FIFO
-	 if (~n_rd) begin
-	    if (n_empty) begin
+	 // handle read+write at the same time
+	 if (~n_rd && ~n_wr) begin
+	    buff[wp] <= port_in;
+	    wp <= bp_t'((wp + 1) & (DEPTH - 1));
+
+	    if (nr > 0) begin
+	       // read is only possible when non-empty
 	       data_out <= buff[rp];
 	       rp <= bp_t'((rp + 1) & (DEPTH - 1));
 	    end
+	    else begin
+	       // increment if only write actually happened
+	       nr <= nr + 1;
+	    end
 	 end
 
-	 // handle write to FIFO
-	 if (~n_wr) begin
-	    if (n_full) begin
+	 // handle read
+	 else if (~n_rd) begin
+	    if (nr > 0) begin
+	       data_out <= buff[rp];
+	       rp <= bp_t'((rp + 1) & (DEPTH - 1));
+	       nr <= nr - 1;
+	    end
+	 end
+
+	 // handle write
+	 else if (~n_wr) begin
+	    if (nr < DEPTH) begin
 	       buff[wp] <= port_in;
 	       wp <= bp_t'((wp + 1) & (DEPTH - 1));
+	       nr <= nr + 1;
 	    end
 	 end
       end
    end
 endmodule
-

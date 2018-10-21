@@ -31,6 +31,11 @@ module top
    wire [7:0] 	      fifo_in, fifo_out;
    wire 	      n_wr, n_rd, n_empty, n_full;
 
+   uartout #(.CDIV(UART_CDIV))
+   uartout_00(.clk, .n_rst,
+	      .data(fifo_out), .n_valid(~n_empty), .n_ready(n_rd),
+	      .tx(uart_tx));
+
    fifo #(.DEPTH(FIFO_DEPTH))
    fifo_00(.clk, .n_rst,
 	   .port_in(fifo_in), .port_out(fifo_out),
@@ -40,11 +45,6 @@ module top
    chargen_00(.clk, .n_rst,
 	      .port(fifo_in), .n_cs(~n_full), .n_wr(n_wr));
    
-   uartout #(.CDIV(UART_CDIV))
-   uartout_00(.clk, .n_rst,
-	      .data(fifo_in), .n_cs(~n_empty), .n_rd(n_rd),
-	      .tx(uart_tx));
-
    blink #(.CDIV(BLINK_INTERVAL))
    blink_00(.clk, .n_rst, .led(led));
 endmodule

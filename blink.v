@@ -28,7 +28,7 @@ module blink
 
 	 // flip led output every cycle
 	 if (counter == CDIV) begin
-	    counter <= 0;
+	    counter <= 1;
 	    led_out <= ~led_out;
 	 end
       end

@@ -17,61 +17,73 @@ module uartout
    (
     input wire 	     clk,
     input wire 	     n_rst,
-    input wire 	     n_cs,
+    input wire 	     n_valid,
     input wire [7:0] data,
-    output wire      n_rd,
+    output wire      n_ready,
     output wire      tx
     );
 
    reg [31:0] 	     counter;
-   reg [7:0] 	     data_saved;
-   reg 		     data_valid;
+   reg [7:0] 	     data_in;
+   reg 		     n_empty;
    reg 		     tx_out;
    reg [3:0] 	     tx_index;
-   reg 		     n_rd_out;
+   reg 		     is_sending;
 
    typedef reg [3:0] txlen_t;
 
-   assign n_rd = n_rd_out;
+   assign n_ready = n_empty;
    assign tx = tx_out;
 
    always @(posedge clk, negedge n_rst) begin
       if (~n_rst) begin
-	 n_rd_out <= `nT;
 	 tx_out <= 1;
-	 data_valid <= 0;
+	 n_empty <= `nT;
+	 is_sending <= `pF;
       end
       else begin
-	 if (~n_cs) begin
-	    if (~data_valid) begin
-	       data_valid <= 1;
-	       data_saved <= data;
+	 if ((n_empty == `nT) && (n_valid == `nT)) begin
+	    data_in <= data;
+	    n_empty <= `nF;
 
-	       tx_out <= 0; // START bit
-	       tx_index <= 0;
-
+	    if (is_sending == `pF) begin
+	       is_sending <= `pT;
 	       counter <= 1;
-	       n_rd_out <= `nF;
+	       tx_out <= 0;
+	       tx_index <= 1;
 	    end
 	 end
 
-	 if (data_valid) begin
+	 if (is_sending == `pT) begin
 	    counter <= counter + 1;
 
 	    if (counter == CDIV) begin
-	       counter <= 0;
-	    end
-	    else if (counter == 0) begin
-	       tx_index <= txlen_t'(tx_index + 1);
+	       counter <= 1;
 
+	       tx_index <= txlen_t'(tx_index + 1);
 	       case (tx_index)
+		 0: begin
+		    tx_out <= 0; // START bit
+		 end
 		 8: begin
+		    tx_out <= data_in[0]; // MSbit-first
+		    n_empty <= `nT; // last bit is sent - buffer is empty now
+		 end
+		 9: begin
 		    tx_out <= 1; // STOP bit
-		    data_valid <= 0;
-		    n_rd_out <= `nT;
+		    tx_index <= 0;
+
+		    // try loading next data while sending STOP bit
+		    if (n_valid == `nT) begin
+		       data_in <= data;
+		       n_empty <= `nF;
+		    end
+		    else begin
+		       is_sending <= `pF;
+		    end
 		 end
 		 default: begin
-		    tx_out <= data_saved[tx_index];
+		    tx_out <= data_in[8 - tx_index]; // MSbit-first
 		 end
 	       endcase
 	    end
@@ -79,4 +91,3 @@ module uartout
       end
    end
 endmodule
-

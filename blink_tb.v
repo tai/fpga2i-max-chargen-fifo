@@ -1,62 +1,74 @@
 // synthesis VERILOG_INPUT_VERSION SYSTEMVERILOG_2005
 
 `timescale 1ns/1ps
-
 `include "common.v"
 
 module blink_tb;
-   // timing(s)
-   parameter T0 = 5;   // small offset to avoid racing with clock edge
-   parameter TH = 50;  // width of half cycle
-   parameter TF = 100; // width of full cycle
-   
-   reg	      clk, n_rst;
-   reg [2:0]  led;
+   `test_init(clk);
 
-   blink #(.CDIV(2)) blink_00(.*);
+   reg clk, n_rst;
+   reg [2:0] led;
 
-   // logging
-   initial begin
+   blink #(.CDIV(3)) blink_00(.*);
+
+   initial begin : logging
 `define HEADER(s) \
       $display(s); \
-      $display("# time nRST LED COUNTER")
-      $monitor("%6t %4b %3b %7d", $time, n_rst, led, blink_00.counter);
+      $display("# time x nRST LED COUNTER")
+      $monitor("%6t %1b %4b %3b %7d",
+	       $time, `TICK_X, n_rst, led, blink_00.counter);
       $timeformat(-9, 0, "", 6);
 
       $dumpfile("blink_tb.vcd");
       $dumpvars(1, blink_00);
       $dumplimit(1_000_000); // stop dump at 1MB
-      $dumpon;
-
-      //`HEADER("# start");
-      //forever #(TF*10) `HEADER("#");
    end
 
-   // clock
-   initial begin
-      #T0 clk = 0;
-      forever #TH clk = ~clk;
-   end
+   //////////////////////////////////////////////////////////////////////
 
-   task test_reset;
-      `HEADER("### test_reset ###");
-      #TF n_rst = `nF;
-      #TF n_rst = `nT;
-      #TF n_rst = `nF;
-
-      `test_ok("Counter should reset to 0", blink_00.counter === 0);
-      `test_ok("LED should be off (HI)", blink_00.led === '1);
-   endtask
-   
-   task test_blink;
-      `HEADER("### test_blink ###");
-      #(TF * 10);
-   endtask
-
-   // run test
-   initial begin
+   initial begin : test_main
       test_reset();
       test_blink();
       `test_pass();
    end
+   
+   task test_reset;
+      `HEADER("### test_reset ###");
+      `TICK(1);
+      n_rst = `nT;
+      `TICK(0); // async reset does not have to wait for clock edge
+      `test_ok("Counter should reset to 0", blink_00.counter === 0);
+      `test_ok("LED should be off (pin==1)", blink_00.led === '1);
+      n_rst = `nF;
+   endtask
+
+   task test_blink;
+      `HEADER("### test_blink ###");
+
+      //
+      // tick-based tests (kept as a record - better use state-based tests)
+      //
+
+      `TICK(1);
+      `test_ok("Counter should be 1", blink_00.counter === 1);
+
+      `TICK(1);
+      `test_ok("Counter should be 2", blink_00.counter === 2);
+
+      `TICK(1);
+      `test_ok("Counter should be 3", blink_00.counter === 3);
+      `test_ok("LED should be off (pin==1)", blink_00.led === '1);
+
+      `TICK(1);
+      `test_ok("Counter should be 1", blink_00.counter === 1);
+      `test_ok("LED should now be on (pin==0)", blink_00.led === '0);
+
+      //
+      // better state-based behaviour tests
+      //
+      `test_event("LED should be 1 in 3T", 3, blink_00.led === '1);
+      `test_state("LED should stay 1 for 2T", 2, blink_00.led === '1);
+      `test_event("LED should be 0 in 1T", 1, blink_00.led === '0);
+      `test_state("LED should stay 0 for 2T", 2, blink_00.led === '0);
+   endtask
 endmodule

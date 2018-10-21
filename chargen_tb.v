@@ -4,64 +4,70 @@
 
 `include "common.v"
 
-`define INITCHAR "a"
-`define LASTCHAR "c"
-
 module chargen_tb;
-   // timing(s)
-   parameter T0 = 5;   // small offset to avoid racing with clock edge
-   parameter TH = 50;  // width of half cycle
-   parameter TF = 100; // width of full cycle
+   `test_init(clk);
 
    reg clk, n_rst, n_cs, n_wr;
    reg [7:0] port;
 
-   chargen #(.LASTCHAR(`LASTCHAR)) chargen_00(.*);
+   chargen #(.LASTCHAR(`STR(c))) chargen_00(.*);
 
-   // logging
-   initial begin
+   initial begin : logging
 `define HEADER(s) \
       $display(s); \
-      $display("# time nRST nCS nWR OUT")
-      $monitor("%6t %4b %3b %3b %3c",
-	       $time, n_rst, n_cs, n_cs, port);
+      $display("# time x nRST nCS nWR OUT")
+      $monitor("%6t %1b %4b %3b %3b %3c",
+	       $time, `TICK_X, n_rst, n_cs, n_cs, port);
       $timeformat(-9, 0, "", 6);
 
       $dumpfile("chargen_tb.vcd");
       $dumpvars(1, chargen_00);
       $dumplimit(1_000_000); // stop dump at 1MB
-      $dumpon;
-      
-      //`HEADER("# start");
-      //forever #(TF*10) `HEADER("#");
    end
 
-   // clock
-   initial begin
-      #T0 clk = 0;
-      forever #TH clk = ~clk;
-   end
+   //////////////////////////////////////////////////////////////////////
 
-   task test_reset;
-      `HEADER("### test_reset ###");
-      #TF n_rst = `nF;
-      #TF n_rst = `nT;
-      #TF n_rst = `nF;
-
-      `test_eq("Output should be initialized to [a]", port, `INITCHAR);
-   endtask
-
-   task test_output;
-      `HEADER("### test_output ###");
-      repeat(6) begin
-	 #TF n_cs = `nT;
-      end
-      `test_eq("Output should now be [c]", port, `LASTCHAR);
-   endtask
-
-   initial begin
+   initial begin : test_main
       test_reset();
       test_output();
       `test_pass();
    end
+
+   task test_reset;
+      `HEADER("### test_reset ###");
+      `TICK(1);
+      n_rst = `nT;
+      `TICK(0);
+      `test_eq("Output should be NUL", port, '0);
+      n_rst = `nF;
+   endtask
+
+   task test_output;
+      `HEADER("### test_output ###");
+      n_cs = `nF;
+      `TICK(1);
+      `test_eq("Output should be NUL", port, '0);
+
+      n_cs = `nT;
+      `TICK(1);
+      `test_eq("Output should be [a]", port, `STR(a));
+      `test_eq("Write strobe should be asserted", n_wr, `nT);
+
+      `TICK(1);
+      `test_eq("Output should be [b]", port, `STR(b));
+
+      `TICK(1);
+      `test_eq("Output should be [c]", port, `STR(c));
+
+      n_cs = `nF;
+      `TICK(1);
+      `test_eq("Output should be NUL", port, '0);
+      
+      n_cs = `nT;
+      `TICK(1);
+      `test_eq("Output should be [a]", port, `STR(a));
+
+      `TICK(1);
+      `test_eq("Output should be [b]", port, `STR(b));
+   endtask
 endmodule
