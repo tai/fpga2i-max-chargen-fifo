@@ -9,7 +9,7 @@ TARGET = top
 # top-level entity name
 
 # verilog code compiler
-VCC = iverilog -g2005-sv -Wall
+VCC = iverilog -g2005-sv -Wall -Wtimescale
 
 # src (testbench and synthesizable code)
 SRCS    = $(wildcard *.v)
@@ -58,7 +58,7 @@ clean:
 	$(RM) -r output_files
 	$(RM) *.qpf *.qsf *.qws *.rpt *.summary
 # clean up iverilog-generated files
-	$(RM) *.vcd $(TARGET) $(TB)
+	$(RM) *.vcd *.E $(TARGET) $(TB)
 # clean up other files
 	$(RM) *.bak *.old *~
 
@@ -82,3 +82,6 @@ $(TARGET): $(SRCS_SY)
 
 %: %.v
 	$(VCC) -s $@ -o $@ $^
+
+%.E: %.v
+	$(VCC) -E -s $@ -o $@ $^
