@@ -38,7 +38,7 @@ check: $(TARGET)
 compile: check $(POF)
 
 test: $(TB)
-	for i in $(TB); do ./$$i; done | \
+	for i in $(TB); do ./$$i | sed -e 's/\x0/_/g'; done | \
 	awk 'BEGIN{rc=0} {print} /^NG:/{rc=1} END{exit(rc)}'
 
 # compile the design, using the setup in init.tcl
