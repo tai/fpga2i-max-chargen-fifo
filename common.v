@@ -24,6 +24,7 @@
 // Example: `LOG(("value=%2d", value));
 `define LOG(s) $write("%6t ", $time); $display s
 `define ERR(s) $display s
+`define OUT(s) $display s
 `define FMT(s) $sformatf s
 
 //////////////////////////////////////////////////////////////////////
@@ -38,13 +39,15 @@ parameter TF = 100; // width of full cycle
 // internal registers
 `define TICK_X _tb_x // dummy bit for $monitor to trigger output on TICK()
 `define TICK_N _tb_n // tick count
-`define TICK_T _tb_t // alias for clock line
+`define TICK_T _tb_t // test clock (wire)
+`define TICK_D _tb_d // test clock driver (reg)
 
-// initialize clock and internal registers
+// initialize base clock, phase-shifted test clock, and internal registers
 `define test_init(clk) \
    initial begin clk = 1; forever #TH clk = ~clk; end \
+   initial begin #T0 `TICK_D = 1; forever #TH `TICK_D = ~`TICK_D; end \
    reg `TICK_X = 0; reg [31:0] `TICK_N = 0; \
-   wire `TICK_T; assign `TICK_T = clk
+   reg `TICK_D; wire `TICK_T; assign `TICK_T = clk /* use TICK_D or clk */
 
 // wait for next tick
 `define TICK(n) \
@@ -89,6 +92,7 @@ parameter TF = 100; // width of full cycle
 // compare args
 `define test_op(msg, arg1, arg2, op) \
    if ((arg1) op (arg2)) begin \
+      `LOG(("NG")); \
       `ERR(("NG: %s at %s:%0d", msg, `__FILE__, `__LINE__)); \
       `ERR(("NG: arg1 = %x", arg1)); \
       `ERR(("NG: arg2 = %x", arg2)); \
@@ -104,26 +108,55 @@ parameter TF = 100; // width of full cycle
 // check if args are not equal (fail if equal)
 `define test_ne(msg, arg1, arg2) `test_op(msg, arg1, arg2, ===)
 
-// check if expr becomes true within given ticks
-`define test_event(msg, tick, expr) \
+// check if expr becomes true in next tick and after, within given deadline
+`define test_event(msg, t, expr) \
    begin \
       `LOG(("=== %s ===", msg)); \
       fork : `CAT(_test_event_, `__LINE__) \
-         begin `TICK(tick); disable `CAT(_test_event_, `__LINE__); end \
-         begin  wait(expr); disable `CAT(_test_event_, `__LINE__); end \
+         begin `TICK(t);         #1; disable `CAT(_test_event_, `__LINE__); end \
+         begin `TICK(1); wait(expr); disable `CAT(_test_event_, `__LINE__); end \
       join \
       `test_ok(msg, expr); \
    end
 
 // check if expr stays true (= keeps state) within given ticks
-`define test_state(msg, tick, expr) \
+`define test_state(msg, k, expr) \
    begin \
       `LOG(("=== %s ===", msg)); \
       fork : `CAT(_test_state_, `__LINE__) \
-         begin    `TICK(tick); disable `CAT(_test_state_, `__LINE__); end \
+         begin       `TICK(k); disable `CAT(_test_state_, `__LINE__); end \
          begin wait(! (expr)); disable `CAT(_test_state_, `__LINE__); end \
       join \
       `test_ok(msg, expr); \
+   end
+
+// check if expr happens within deadline (t) and keeps for given time (k)
+`define test_signal(msg, t, k, expr) \
+   begin \
+      `LOG(("=== %s (%0dT, %0dT) ===", msg, t, k)); \
+      fork : `CAT(_test_signal_event_, `__LINE__) \
+         begin `TICK(t);         #1; disable `CAT(_test_signal_event_, `__LINE__); end \
+         begin `TICK(1); wait(expr); disable `CAT(_test_signal_event_, `__LINE__); end \
+      join \
+      `test_ok(`FMT(("%s (S)", msg)), expr); \
+      if ((k) > 0) begin \
+         fork : `CAT(_test_signal_state_, `__LINE__) \
+            begin `TICK((k) - 1); disable `CAT(_test_signal_state_, `__LINE__); end \
+            begin wait(! (expr)); disable `CAT(_test_signal_state_, `__LINE__); end \
+         join \
+         `test_ok(`FMT(("%s (E)", msg)), expr); \
+      end \
+   end
+
+//  test - compare with 'x as a wildcard
+`define tmp_eq(s_exp, s_got, ret) \
+   begin \
+      ret = 1; \
+      for (int i = 0; i < $size(s_exp); i=i+1) begin \
+         if ((s_exp[i] !== 'x) && (s_exp[i] !== s_got[i])) begin \
+            ret = 0; \
+         end \
+      end \
    end
 
 `endif //  `ifndef COMMON_V

@@ -14,37 +14,37 @@ module chargen
    (
     input wire 	      clk, // on every posedge, new byte is generated
     input wire 	      n_rst, // reset state when asserted
-    output wire [7:0] port, // output port where new byte is generated
-    input wire 	      n_cs, // generates byte when asserted
-    output wire       n_wr // asserted when new byte is written
+    input wire 	      ready_n, // slave is ready to read
+    output wire       valid_n, // data is valid
+    output wire [7:0] port // output data
     );
 
-   reg [7:0] 	      port_int, port_next;
-   reg 		      n_wr_int;
+   typedef reg [7:0]  portdata_t;
 
-   typedef reg [7:0]  portsize_t;
+   portdata_t next_port, next_char;
+   reg 		      next_valid_n;
 
-   assign n_wr = n_wr_int;
-   assign port = port_int;
+   assign valid_n = next_valid_n;
+   assign port = next_port;
    
    always @(posedge clk, negedge n_rst) begin
       if (~n_rst) begin
-	 n_wr_int  <= `nF;
-	 port_int  <= '0;
-	 port_next <= "a";
+	 next_valid_n <= `nF;
+	 next_port <= "a";
+	 next_char <= "a";
       end
-      else if (~n_cs) begin
-	 n_wr_int  <= `nT;
-	 port_int  <= port_next;
-	 port_next <= portsize_t'(port_next + 1);
+      else if (~ready_n) begin
+	 next_valid_n <= `nT;
+	 next_port <= next_char;
+	 next_char <= portdata_t'(next_char + 1);
 
-	 if (port_next == LASTCHAR) begin
-	    port_next <= "a";
+	 if (next_char == LASTCHAR) begin
+	    next_char <= "a";
 	 end
       end
       else begin
-	 n_wr_int <= `nF;
-	 port_int <= '0;
+	 next_valid_n <= `nF;
+	 next_char <= next_port;
       end
    end
 endmodule
