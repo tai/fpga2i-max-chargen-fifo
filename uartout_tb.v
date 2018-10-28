@@ -74,7 +74,7 @@ module uartout_tb;
 
 	 // TX bits
 	 valid_n = `nF;
-	 for (int bi = 7; bi >= 0; bi--) begin
+	 for (int bi = 0; bi < 8; bi++) begin
 	    `test_signal(`FMT(("Should see bit %1d as TX=%1b", bi, data[bi])),
 			 1, CDIV, tx === data[bi]);
 	 end
@@ -111,7 +111,7 @@ module uartout_tb;
 	 end
 
 	 // TX bits
-	 for (int bi = 7; bi >= 0; bi--) begin
+	 for (int bi = 0; bi < 8; bi++) begin
 	    `test_signal(`FMT(("Should see bit %1d as TX=%1b", bi, ch[bi])),
 			 1, CDIV, tx === ch[bi]);
 	 end

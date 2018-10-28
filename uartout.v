@@ -68,10 +68,6 @@ module uartout
 
 	       tx_index <= txlen_t'(tx_index + 1);
 	       case (tx_index)
-		 7: begin
-		    tx_out <= data_in[0];
-		    is_empty <= `pT; // last bit is sent - buffer is empty now
-		 end
 		 8: begin
 		    tx_out <= 1; // STOP bit
 		 end
@@ -86,7 +82,12 @@ module uartout
 		    end
 		 end
 		 default: begin
-		    tx_out <= data_in[7 - tx_index]; // MSbit-first
+		    tx_out <= data_in[tx_index]; // LSbit-first
+
+		    // last bit is sent - buffer is empty now
+		    if (tx_index == 7) begin
+		       is_empty <= `pT;
+		    end
 		 end
 	       endcase
 	    end

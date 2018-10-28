@@ -87,7 +87,7 @@ module top_tb;
 		   (top0.uartout0.data_in === ch) && (top0.uart_tx === 0));
 
       // test each bit on TX
-      for (int i = 7; i >= 0; i = i - 1) begin
+      for (int i = 0; i < 8; i++) begin
 	 `test_signal(`FMT(("Should see bit%1d as TX=%1b", i, ch[i])),
 		      1, UART_CDIV, top0.uart_tx === ch[i]);
       end
